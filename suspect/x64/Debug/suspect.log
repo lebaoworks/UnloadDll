@@ -1,0 +1,6 @@
+﻿  pch.cpp
+  dllmain.cpp
+  export.cpp
+  Generating Code...
+     Creating library C:\Users\baosa\Desktop\UnloadDll\x64\Debug\suspect.lib and object C:\Users\baosa\Desktop\UnloadDll\x64\Debug\suspect.exp
+  suspect.vcxproj -> C:\Users\baosa\Desktop\UnloadDll\x64\Debug\suspect.dll

@@ -1,0 +1,3 @@
+﻿  surgeon.cpp
+C:\Users\baosa\Desktop\UnloadDll\surgeon\surgeon.cpp(52,13): error C2440: 'initializing': cannot convert from 'PVOID' to 'NTSTATUS (__cdecl *)(void)'
+C:\Users\baosa\Desktop\UnloadDll\surgeon\surgeon.cpp(52,28): message : Types pointed to are unrelated; conversion requires reinterpret_cast, C-style cast or function-style cast
