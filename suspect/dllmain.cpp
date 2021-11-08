@@ -7,7 +7,7 @@ DWORD WINAPI suspect_func(__in  LPVOID lpParameter)
 {
     while (true)
     {
-        std::cout << "Do I look suspect?" << std::endl;
+        printf("[PID: %d][TID: %d] Do I look suspect?\n", GetCurrentProcessId(), GetCurrentThreadId());
         Sleep(1000);
     }
     return 0;

@@ -1,19 +1,23 @@
-// surgeon.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
-#pragma comment(linker,"/defaultlib:winternl.lib")
-#pragma warning(error:0144)
+// PEB http://terminus.rewolf.pl/terminus/structures/ntdll/_PEB_combined.html
+// LDR http://sandsprite.com/CodeStuff/Understanding_the_Peb_Loader_Data_List.html
 
-#include <windows.h>
+#undef UNICODE
+#undef _UNICODE_
+
+#include "windows.h"
 #include <iostream>
-//#include "nt.h"
+
 using namespace std;
+#include "dllhelper.h"
+#include "ntdll.h"
+#include "tebpeb64.h"
 
 
 string GetLastErrorAsString()
 {
     DWORD errorMessageID = GetLastError();
     if (errorMessageID == 0) {
-        return NULL;
+        return string("");
     }
 
     LPSTR messageBuffer = NULL;
@@ -31,28 +35,60 @@ void ExitError()
 }
 
 
+class NTDLL_API{
+    DllHelper _dll{ "NtDLL.dll" };
 
-PVOID get_func(char* module_name, char* func_name)
-{
-    HMODULE hModule = LoadLibraryA(module_name);
-    if (hModule == NULL)
-        return NULL;
-    return GetProcAddress(hModule, func_name);
-}
+public:
+    decltype(NtQueryInformationProcess)* _NtQueryInformationProcess = _dll["NtQueryInformationProcess"];
+};
+
 int main()
 {
-    DWORD iPID;
+    NTDLL_API NtDLL;
+    DWORD PID;
     printf("Input PID: ");
-    scanf_s("%d", &iPID);
-    HANDLE hProcess = OpenProcess(PROCESS_VM_READ, false, iPID);
+    scanf_s("%d", &PID);
+    HANDLE hProcess = OpenProcess(PROCESS_VM_READ | PROCESS_QUERY_INFORMATION, false, PID);
     if (hProcess == NULL)
         ExitError();
 
+    // Query PEB address
+    PROCESS_BASIC_INFORMATION pbi;
+    DWORD outLength = 0;
+    printf("Getting PEB addr... ");
+    if (NtDLL._NtQueryInformationProcess(
+        hProcess,
+        ProcessBasicInformation,
+        &pbi,
+        sizeof(pbi),
+        &outLength
+    ) != 0)
+        ExitError();
+    printf("=> %p\n", pbi.PebBaseAddress);
 
-    NTSTATUS(*hello)(void) = get_func((char*)"ntdll.dll", (char*)"ZwQueryInformationProcess");
-    
+    // Read PEB
+    SIZE_T size;
+    PEB peb;
+    printf("Reading PEB... ");
+    if (!ReadProcessMemory(hProcess, pbi.PebBaseAddress, &peb, sizeof(peb), &size))
+        ExitError();
+    printf("=> Done.\n");
 
-    cout << "Open Process Success" << endl;
+    // Read Loaded DLLs
+    // Read LDR
+    printf("Reading LDR in (%p)... ", peb.Ldr);
+    PEB_LDR_DATA ldr;
+    if (!ReadProcessMemory(hProcess, (LPCVOID) peb.Ldr, &ldr, sizeof(ldr), &size))
+        ExitError();
+    printf("=> Length: %d, Init: %d\n", ldr.Length, ldr.Initialized);
+    // Read LDR entries
+    PVOID pointer = ldr.InMemoryOrderModuleList.Flink;
+    LDR_DATA_TABLE_ENTRY entry;
+    do {
+        if (!ReadProcessMemory(hProcess, pointer, &entry, sizeof(entry), &size))
+            ExitError();
+        printf("Module_base: %p\n", entry.DllBase);
+    } while (pointer != NULL);
     return 0;
     
 }

@@ -20,11 +20,20 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="nt.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
+    <None Include=".editorconfig" />
   </ItemGroup>
   <ItemGroup>
-    <None Include=".editorconfig" />
+    <ClInclude Include="tebpeb64.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dllhelper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ntdll.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="windows.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
