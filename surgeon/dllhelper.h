@@ -1,6 +1,6 @@
 #pragma once
 
-#include "windows.h"
+#include <windows.h>
 #include <type_traits>
 
 class ProcPtr {

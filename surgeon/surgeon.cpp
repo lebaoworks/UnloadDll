@@ -4,13 +4,15 @@
 #undef UNICODE
 #undef _UNICODE_
 
-#include "windows.h"
 #include <iostream>
 
-using namespace std;
+#include <Windows.h>
+#include <stddef.h>
 #include "dllhelper.h"
 #include "ntdll.h"
-#include "tebpeb64.h"
+
+
+using namespace std;
 
 
 string GetLastErrorAsString()
@@ -35,8 +37,8 @@ void ExitError()
 }
 
 
-class NTDLL_API{
-    DllHelper _dll{ "NtDLL.dll" };
+class NTDLL_API {
+    DllHelper _dll{ "ntdll.dll" };
 
 public:
     decltype(NtQueryInformationProcess)* _NtQueryInformationProcess = _dll["NtQueryInformationProcess"];
@@ -82,13 +84,20 @@ int main()
         ExitError();
     printf("=> Length: %d, Init: %d\n", ldr.Length, ldr.Initialized);
     // Read LDR entries
-    PVOID pointer = ldr.InMemoryOrderModuleList.Flink;
-    LDR_DATA_TABLE_ENTRY entry;
-    do {
-        if (!ReadProcessMemory(hProcess, pointer, &entry, sizeof(entry), &size))
+    LDR_MODULE module; 
+    PLIST_ENTRY entry = ldr.InLoadOrderModuleList.Flink;
+    WCHAR *module_fullname;
+    while (entry != (PVOID) ((UINT64)peb.Ldr + offsetof(PEB_LDR_DATA, InLoadOrderModuleList)))
+    {
+        if (!ReadProcessMemory(hProcess, entry, &module, sizeof(module), &size))
             ExitError();
-        printf("Module_base: %p\n", entry.DllBase);
-    } while (pointer != NULL);
+        printf("[+] LDR_MODULE size: %d\tModule_base: %p\t Module_count: %d\n", size, module.DllBase, module.LoadCount);
+        module_fullname = (WCHAR*) calloc(module.FullDllName.Length + 1, sizeof(WCHAR));
+        if (ReadProcessMemory(hProcess, module.FullDllName.Buffer, module_fullname, module.FullDllName.Length, &size))
+            wprintf(L"Module_name: %s\n", module_fullname);
+        free(module_fullname);
+        entry = module.InLoadOrderModuleList.Flink;
+    }
     return 0;
     
 }

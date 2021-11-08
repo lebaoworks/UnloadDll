@@ -32,7 +32,7 @@
     <ClInclude Include="ntdll.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="windows.h">
+    <ClInclude Include="ntdef.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

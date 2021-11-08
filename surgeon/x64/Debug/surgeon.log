@@ -1,13 +1,1 @@
-﻿  surgeon.cpp
-C:\Users\baosa\Desktop\UnloadDll\surgeon\ntdll.h(72,10): error C3646: 'PebBase': unknown override specifier
-C:\Users\baosa\Desktop\UnloadDll\surgeon\ntdll.h(72,17): error C4430: missing type specifier - int assumed. Note: C++ does not support default-int
-C:\Users\baosa\Desktop\UnloadDll\surgeon\surgeon.cpp(67,27): error C2039: 'PebBaseAddress': is not a member of '_PROCESS_BASIC_INFORMATION'
-C:\Users\baosa\Desktop\UnloadDll\surgeon\ntdll.h(69): message : see declaration of '_PROCESS_BASIC_INFORMATION'
-C:\Users\baosa\Desktop\UnloadDll\surgeon\surgeon.cpp(67,12): warning C4473: 'printf' : not enough arguments passed for format string
-C:\Users\baosa\Desktop\UnloadDll\surgeon\surgeon.cpp(67,12): message : placeholders and their parameters expect 1 variadic arguments, but 0 were provided
-C:\Users\baosa\Desktop\UnloadDll\surgeon\surgeon.cpp(67,12): message : the missing variadic argument 1 is required by format string '%p'
-C:\Users\baosa\Desktop\UnloadDll\surgeon\surgeon.cpp(73,42): error C2039: 'PebBaseAddress': is not a member of '_PROCESS_BASIC_INFORMATION'
-C:\Users\baosa\Desktop\UnloadDll\surgeon\ntdll.h(69): message : see declaration of '_PROCESS_BASIC_INFORMATION'
-C:\Users\baosa\Desktop\UnloadDll\surgeon\surgeon.cpp(73,8): error C2660: 'ReadProcessMemory': function does not take 4 arguments
-C:\Program Files (x86)\Windows Kits\10\Include\10.0.19041.0\um\memoryapi.h(159,1): message : see declaration of 'ReadProcessMemory'
-C:\Users\baosa\Desktop\UnloadDll\surgeon\surgeon.cpp(79,12): warning C4477: 'printf' : format string '%p' requires an argument of type 'void *', but variadic argument 1 has type 'PTR64'
+﻿
