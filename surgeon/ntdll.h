@@ -3,7 +3,7 @@
 #include <windows.h>
 #include <windef.h>
 
-#include "tebpeb64.h"
+#include "ntdef.h"
 
 typedef LONG KPRIORITY;
 
@@ -62,125 +62,567 @@ typedef enum _PROCESSINFOCLASS {
     MaxProcessInfoClass                     // MaxProcessInfoClass should always be the last enum
 } PROCESSINFOCLASS;
 
+typedef enum _THREADINFOCLASS
+{
+    ThreadBasicInformation, // q: THREAD_BASIC_INFORMATION
+    ThreadTimes, // q: KERNEL_USER_TIMES
+    ThreadPriority, // s: KPRIORITY
+    ThreadBasePriority, // s: LONG
+    ThreadAffinityMask, // s: KAFFINITY
+    ThreadImpersonationToken, // s: HANDLE
+    ThreadDescriptorTableEntry, // q: DESCRIPTOR_TABLE_ENTRY (or WOW64_DESCRIPTOR_TABLE_ENTRY)
+    ThreadEnableAlignmentFaultFixup, // s: BOOLEAN
+    ThreadEventPair,
+    ThreadQuerySetWin32StartAddress, // q: PVOID
+    ThreadZeroTlsCell, // 10
+    ThreadPerformanceCount, // q: LARGE_INTEGER
+    ThreadAmILastThread, // q: ULONG
+    ThreadIdealProcessor, // s: ULONG
+    ThreadPriorityBoost, // qs: ULONG
+    ThreadSetTlsArrayAddress,
+    ThreadIsIoPending, // q: ULONG
+    ThreadHideFromDebugger, // s: void
+    ThreadBreakOnTermination, // qs: ULONG
+    ThreadSwitchLegacyState,
+    ThreadIsTerminated, // q: ULONG // 20
+    ThreadLastSystemCall, // q: THREAD_LAST_SYSCALL_INFORMATION
+    ThreadIoPriority, // qs: IO_PRIORITY_HINT
+    ThreadCycleTime, // q: THREAD_CYCLE_TIME_INFORMATION
+    ThreadPagePriority, // q: ULONG
+    ThreadActualBasePriority,
+    ThreadTebInformation, // q: THREAD_TEB_INFORMATION (requires THREAD_GET_CONTEXT + THREAD_SET_CONTEXT)
+    ThreadCSwitchMon,
+    ThreadCSwitchPmu,
+    ThreadWow64Context, // q: WOW64_CONTEXT
+    ThreadGroupInformation, // q: GROUP_AFFINITY // 30
+    ThreadUmsInformation,
+    ThreadCounterProfiling,
+    ThreadIdealProcessorEx, // q: PROCESSOR_NUMBER
+    ThreadCpuAccountingInformation, // since WIN8
+    ThreadSuspendCount, // since WINBLUE
+    ThreadHeterogeneousCpuPolicy, // q: KHETERO_CPU_POLICY // since THRESHOLD
+    ThreadContainerId, // q: GUID
+    ThreadNameInformation,
+    ThreadSelectedCpuSets,
+    ThreadSystemThreadInformation, // q: SYSTEM_THREAD_INFORMATION // 40
+    ThreadActualGroupAffinity, // since THRESHOLD2
+    MaxThreadInfoClass
+} THREADINFOCLASS;
+
 typedef struct _PEB_LDR_DATA {
     ULONG Length;
-    UCHAR Initialized;
-    BYTE  Reversed[3];
-    PVOID SsHandle;
+    BOOLEAN Initialized;
+    HANDLE SsHandle;
     LIST_ENTRY InLoadOrderModuleList;
     LIST_ENTRY InMemoryOrderModuleList;
     LIST_ENTRY InInitializationOrderModuleList;
     PVOID EntryInProgress;
+    BOOLEAN ShutdownInProgress;
+    HANDLE ShutdownThreadId;
 } PEB_LDR_DATA, * PPEB_LDR_DATA;
 
-typedef struct _LDR_MODULE {
-    LIST_ENTRY InLoadOrderModuleList;
-    LIST_ENTRY InMemoryOrderModuleList;
-    LIST_ENTRY InInitializationOrderModuleList;
+#define GDI_HANDLE_BUFFER_SIZE32 34
+#define GDI_HANDLE_BUFFER_SIZE64 60
+
+#ifndef _WIN64
+#define GDI_HANDLE_BUFFER_SIZE GDI_HANDLE_BUFFER_SIZE32
+#else
+#define GDI_HANDLE_BUFFER_SIZE GDI_HANDLE_BUFFER_SIZE64
+#endif
+typedef ULONG GDI_HANDLE_BUFFER[GDI_HANDLE_BUFFER_SIZE];
+typedef struct _RTL_USER_PROCESS_PARAMETERS* PRTL_USER_PROCESS_PARAMETERS;
+typedef struct _RTL_CRITICAL_SECTION* PRTL_CRITICAL_SECTION;
+
+// symbols
+typedef struct _PEB
+{
+    BOOLEAN InheritedAddressSpace;
+    BOOLEAN ReadImageFileExecOptions;
+    BOOLEAN BeingDebugged;
+    union
+    {
+        BOOLEAN BitField;
+        struct
+        {
+            BOOLEAN ImageUsesLargePages : 1;
+            BOOLEAN IsProtectedProcess : 1;
+            BOOLEAN IsImageDynamicallyRelocated : 1;
+            BOOLEAN SkipPatchingUser32Forwarders : 1;
+            BOOLEAN IsPackagedProcess : 1;
+            BOOLEAN IsAppContainer : 1;
+            BOOLEAN IsProtectedProcessLight : 1;
+            BOOLEAN SpareBits : 1;
+        };
+    };
+    HANDLE Mutant;
+
+    PVOID ImageBaseAddress;
+    PPEB_LDR_DATA Ldr;
+    PRTL_USER_PROCESS_PARAMETERS ProcessParameters;
+    PVOID SubSystemData;
+    PVOID ProcessHeap;
+    PRTL_CRITICAL_SECTION FastPebLock;
+    PVOID AtlThunkSListPtr;
+    PVOID IFEOKey;
+    union
+    {
+        ULONG CrossProcessFlags;
+        struct
+        {
+            ULONG ProcessInJob : 1;
+            ULONG ProcessInitializing : 1;
+            ULONG ProcessUsingVEH : 1;
+            ULONG ProcessUsingVCH : 1;
+            ULONG ProcessUsingFTH : 1;
+            ULONG ReservedBits0 : 27;
+        };
+    };
+    union
+    {
+        PVOID KernelCallbackTable;
+        PVOID UserSharedInfoPtr;
+    };
+    ULONG SystemReserved[1];
+    ULONG AtlThunkSListPtr32;
+    PVOID ApiSetMap;
+    ULONG TlsExpansionCounter;
+    PVOID TlsBitmap;
+    ULONG TlsBitmapBits[2];
+    PVOID ReadOnlySharedMemoryBase;
+    PVOID HotpatchInformation;
+    PVOID* ReadOnlyStaticServerData;
+    PVOID AnsiCodePageData;
+    PVOID OemCodePageData;
+    PVOID UnicodeCaseTableData;
+
+    ULONG NumberOfProcessors;
+    ULONG NtGlobalFlag;
+
+    LARGE_INTEGER CriticalSectionTimeout;
+    SIZE_T HeapSegmentReserve;
+    SIZE_T HeapSegmentCommit;
+    SIZE_T HeapDeCommitTotalFreeThreshold;
+    SIZE_T HeapDeCommitFreeBlockThreshold;
+
+    ULONG NumberOfHeaps;
+    ULONG MaximumNumberOfHeaps;
+    PVOID* ProcessHeaps;
+
+    PVOID GdiSharedHandleTable;
+    PVOID ProcessStarterHelper;
+    ULONG GdiDCAttributeList;
+
+    PRTL_CRITICAL_SECTION LoaderLock;
+
+    ULONG OSMajorVersion;
+    ULONG OSMinorVersion;
+    USHORT OSBuildNumber;
+    USHORT OSCSDVersion;
+    ULONG OSPlatformId;
+    ULONG ImageSubsystem;
+    ULONG ImageSubsystemMajorVersion;
+    ULONG ImageSubsystemMinorVersion;
+    ULONG_PTR ImageProcessAffinityMask;
+    GDI_HANDLE_BUFFER GdiHandleBuffer;
+    PVOID PostProcessInitRoutine;
+
+    PVOID TlsExpansionBitmap;
+    ULONG TlsExpansionBitmapBits[32];
+
+    ULONG SessionId;
+
+    ULARGE_INTEGER AppCompatFlags;
+    ULARGE_INTEGER AppCompatFlagsUser;
+    PVOID pShimData;
+    PVOID AppCompatInfo;
+
+    UNICODE_STRING CSDVersion;
+
+    PVOID ActivationContextData;
+    PVOID ProcessAssemblyStorageMap;
+    PVOID SystemDefaultActivationContextData;
+    PVOID SystemAssemblyStorageMap;
+
+    SIZE_T MinimumStackCommit;
+
+    PVOID* FlsCallback;
+    LIST_ENTRY FlsListHead;
+    PVOID FlsBitmap;
+    ULONG FlsBitmapBits[FLS_MAXIMUM_AVAILABLE / (sizeof(ULONG) * 8)];
+    ULONG FlsHighIndex;
+
+    PVOID WerRegistrationData;
+    PVOID WerShipAssertPtr;
+    PVOID pContextData;
+    PVOID pImageHeaderHash;
+    union
+    {
+        ULONG TracingFlags;
+        struct
+        {
+            ULONG HeapTracingEnabled : 1;
+            ULONG CritSecTracingEnabled : 1;
+            ULONG LibLoaderTracingEnabled : 1;
+            ULONG SpareTracingBits : 29;
+        };
+    };
+    ULONGLONG CsrServerReadOnlySharedMemoryBase;
+} PEB, * PPEB;
+
+#define GDI_BATCH_BUFFER_SIZE 310
+
+typedef struct _GDI_TEB_BATCH
+{
+    ULONG Offset;
+    ULONG_PTR HDC;
+    ULONG Buffer[GDI_BATCH_BUFFER_SIZE];
+} GDI_TEB_BATCH, * PGDI_TEB_BATCH;
+
+typedef struct _TEB_ACTIVE_FRAME_CONTEXT
+{
+    ULONG Flags;
+    PSTR FrameName;
+} TEB_ACTIVE_FRAME_CONTEXT, * PTEB_ACTIVE_FRAME_CONTEXT;
+
+typedef struct _TEB_ACTIVE_FRAME
+{
+    ULONG Flags;
+    struct _TEB_ACTIVE_FRAME* Previous;
+    PTEB_ACTIVE_FRAME_CONTEXT Context;
+} TEB_ACTIVE_FRAME, * PTEB_ACTIVE_FRAME;
+
+typedef struct _CLIENT_ID
+{
+    HANDLE UniqueProcess;
+    HANDLE UniqueThread;
+} CLIENT_ID, * PCLIENT_ID;
+
+typedef struct _TEB
+{
+    NT_TIB NtTib;
+
+    PVOID EnvironmentPointer;
+    CLIENT_ID ClientId;
+    PVOID ActiveRpcHandle;
+    PVOID ThreadLocalStoragePointer;
+    PPEB ProcessEnvironmentBlock;
+
+    ULONG LastErrorValue;
+    ULONG CountOfOwnedCriticalSections;
+    PVOID CsrClientThread;
+    PVOID Win32ThreadInfo;
+    ULONG User32Reserved[26];
+    ULONG UserReserved[5];
+    PVOID WOW32Reserved;
+    LCID CurrentLocale;
+    ULONG FpSoftwareStatusRegister;
+    PVOID SystemReserved1[54];
+    NTSTATUS ExceptionCode;
+    PVOID ActivationContextStackPointer;
+#ifdef _WIN64
+    UCHAR SpareBytes[24];
+#else
+    UCHAR SpareBytes[36];
+#endif
+    ULONG TxFsContext;
+
+    GDI_TEB_BATCH GdiTebBatch;
+    CLIENT_ID RealClientId;
+    HANDLE GdiCachedProcessHandle;
+    ULONG GdiClientPID;
+    ULONG GdiClientTID;
+    PVOID GdiThreadLocalInfo;
+    ULONG_PTR Win32ClientInfo[62];
+    PVOID glDispatchTable[233];
+    ULONG_PTR glReserved1[29];
+    PVOID glReserved2;
+    PVOID glSectionInfo;
+    PVOID glSection;
+    PVOID glTable;
+    PVOID glCurrentRC;
+    PVOID glContext;
+
+    NTSTATUS LastStatusValue;
+    UNICODE_STRING StaticUnicodeString;
+    WCHAR StaticUnicodeBuffer[261];
+
+    PVOID DeallocationStack;
+    PVOID TlsSlots[64];
+    LIST_ENTRY TlsLinks;
+
+    PVOID Vdm;
+    PVOID ReservedForNtRpc;
+    PVOID DbgSsReserved[2];
+
+    ULONG HardErrorMode;
+#ifdef _WIN64
+    PVOID Instrumentation[11];
+#else
+    PVOID Instrumentation[9];
+#endif
+    GUID ActivityId;
+
+    PVOID SubProcessTag;
+    PVOID EtwLocalData;
+    PVOID EtwTraceData;
+    PVOID WinSockData;
+    ULONG GdiBatchCount;
+
+    union
+    {
+        PROCESSOR_NUMBER CurrentIdealProcessor;
+        ULONG IdealProcessorValue;
+        struct
+        {
+            UCHAR ReservedPad0;
+            UCHAR ReservedPad1;
+            UCHAR ReservedPad2;
+            UCHAR IdealProcessor;
+        };
+    };
+
+    ULONG GuaranteedStackBytes;
+    PVOID ReservedForPerf;
+    PVOID ReservedForOle;
+    ULONG WaitingOnLoaderLock;
+    PVOID SavedPriorityState;
+    ULONG_PTR SoftPatchPtr1;
+    PVOID ThreadPoolData;
+    PVOID* TlsExpansionSlots;
+#ifdef _WIN64
+    PVOID DeallocationBStore;
+    PVOID BStoreLimit;
+#endif
+    ULONG MuiGeneration;
+    ULONG IsImpersonating;
+    PVOID NlsCache;
+    PVOID pShimData;
+    ULONG HeapVirtualAffinity;
+    HANDLE CurrentTransactionHandle;
+    PTEB_ACTIVE_FRAME ActiveFrame;
+    PVOID FlsData;
+
+    PVOID PreferredLanguages;
+    PVOID UserPrefLanguages;
+    PVOID MergedPrefLanguages;
+    ULONG MuiImpersonation;
+
+    union
+    {
+        USHORT CrossTebFlags;
+        USHORT SpareCrossTebBits : 16;
+    };
+    union
+    {
+        USHORT SameTebFlags;
+        struct
+        {
+            USHORT SafeThunkCall : 1;
+            USHORT InDebugPrint : 1;
+            USHORT HasFiberData : 1;
+            USHORT SkipThreadAttach : 1;
+            USHORT WerInShipAssertCode : 1;
+            USHORT RanProcessInit : 1;
+            USHORT ClonedThread : 1;
+            USHORT SuppressDebugMsg : 1;
+            USHORT DisableUserStackWalk : 1;
+            USHORT RtlExceptionAttached : 1;
+            USHORT InitialThread : 1;
+            USHORT SessionAware : 1;
+            USHORT SpareSameTebBits : 4;
+        };
+    };
+
+    PVOID TxnScopeEnterCallback;
+    PVOID TxnScopeExitCallback;
+    PVOID TxnScopeContext;
+    ULONG LockCount;
+    ULONG SpareUlong0;
+    PVOID ResourceRetValue;
+    PVOID ReservedForWdf;
+} TEB, * PTEB;
+
+typedef struct _RTL_BALANCED_NODE
+{
+    union
+    {
+        struct _RTL_BALANCED_NODE* Children[2];
+        struct
+        {
+            struct _RTL_BALANCED_NODE* Left;
+            struct _RTL_BALANCED_NODE* Right;
+        };
+    };
+    union
+    {
+        UCHAR Red : 1;
+        UCHAR Balance : 2;
+        ULONG_PTR ParentValue;
+    };
+} RTL_BALANCED_NODE, * PRTL_BALANCED_NODE;
+
+// symbols
+typedef struct _LDR_SERVICE_TAG_RECORD
+{
+    struct _LDR_SERVICE_TAG_RECORD* Next;
+    ULONG ServiceTag;
+} LDR_SERVICE_TAG_RECORD, * PLDR_SERVICE_TAG_RECORD;
+
+// symbols
+typedef struct _LDRP_CSLIST
+{
+    PSINGLE_LIST_ENTRY Tail;
+} LDRP_CSLIST, * PLDRP_CSLIST;
+
+// symbols
+typedef enum _LDR_DDAG_STATE
+{
+    LdrModulesMerged = -5,
+    LdrModulesInitError = -4,
+    LdrModulesSnapError = -3,
+    LdrModulesUnloaded = -2,
+    LdrModulesUnloading = -1,
+    LdrModulesPlaceHolder = 0,
+    LdrModulesMapping = 1,
+    LdrModulesMapped = 2,
+    LdrModulesWaitingForDependencies = 3,
+    LdrModulesSnapping = 4,
+    LdrModulesSnapped = 5,
+    LdrModulesCondensed = 6,
+    LdrModulesReadyToInit = 7,
+    LdrModulesInitializing = 8,
+    LdrModulesReadyToRun = 9
+} LDR_DDAG_STATE;
+
+// symbols
+typedef struct _LDR_DDAG_NODE
+{
+    LIST_ENTRY Modules;
+    PLDR_SERVICE_TAG_RECORD ServiceTagList;
+    ULONG LoadCount;
+    ULONG ReferenceCount;
+    ULONG DependencyCount;
+    union
+    {
+        LDRP_CSLIST Dependencies;
+        SINGLE_LIST_ENTRY RemovalLink;
+    };
+    LDRP_CSLIST IncomingDependencies;
+    LDR_DDAG_STATE State;
+    SINGLE_LIST_ENTRY CondenseLink;
+    ULONG PreorderNumber;
+    ULONG LowestLink;
+} LDR_DDAG_NODE, * PLDR_DDAG_NODE;
+
+// rev
+typedef struct _LDR_DEPENDENCY_RECORD
+{
+    SINGLE_LIST_ENTRY DependencyLink;
+    PLDR_DDAG_NODE DependencyNode;
+    SINGLE_LIST_ENTRY IncomingDependencyLink;
+    PLDR_DDAG_NODE IncomingDependencyNode;
+} LDR_DEPENDENCY_RECORD, * PLDR_DEPENDENCY_RECORD;
+
+// symbols
+typedef enum _LDR_DLL_LOAD_REASON
+{
+    LoadReasonStaticDependency,
+    LoadReasonStaticForwarderDependency,
+    LoadReasonDynamicForwarderDependency,
+    LoadReasonDelayloadDependency,
+    LoadReasonDynamicLoad,
+    LoadReasonAsImageLoad,
+    LoadReasonAsDataLoad,
+    LoadReasonUnknown = -1
+} LDR_DLL_LOAD_REASON, * PLDR_DLL_LOAD_REASON;
+
+#define LDRP_PACKAGED_BINARY 0x00000001
+#define LDRP_IMAGE_DLL 0x00000004
+#define LDRP_LOAD_IN_PROGRESS 0x00001000
+#define LDRP_ENTRY_PROCESSED 0x00004000
+#define LDRP_DONT_CALL_FOR_THREADS 0x00040000
+#define LDRP_PROCESS_ATTACH_CALLED 0x00080000
+#define LDRP_PROCESS_ATTACH_FAILED 0x00100000
+#define LDRP_IMAGE_NOT_AT_BASE 0x00200000 // Vista and below
+#define LDRP_COR_IMAGE 0x00400000
+#define LDRP_DONT_RELOCATE 0x00800000
+#define LDRP_REDIRECTED 0x10000000
+#define LDRP_COMPAT_DATABASE_PROCESSED 0x80000000
+
+// Use the size of the structure as it was in Windows XP.
+#define LDR_DATA_TABLE_ENTRY_SIZE_WINXP FIELD_OFFSET(LDR_DATA_TABLE_ENTRY, DdagNode)
+#define LDR_DATA_TABLE_ENTRY_SIZE_WIN7 FIELD_OFFSET(LDR_DATA_TABLE_ENTRY, BaseNameHashValue)
+#define LDR_DATA_TABLE_ENTRY_SIZE_WIN8 FIELD_OFFSET(LDR_DATA_TABLE_ENTRY, ImplicitPathOptions)
+
+typedef struct _LDR_DATA_TABLE_ENTRY
+{
+    LIST_ENTRY InLoadOrderLinks;
+    LIST_ENTRY InMemoryOrderLinks;
+    union
+    {
+        LIST_ENTRY InInitializationOrderLinks;
+        LIST_ENTRY InProgressLinks;
+    };
     PVOID DllBase;
     PVOID EntryPoint;
     ULONG SizeOfImage;
     UNICODE_STRING FullDllName;
     UNICODE_STRING BaseDllName;
-    ULONG Flags;
-    SHORT LoadCount;
-    SHORT TlsIndex;
-    LIST_ENTRY HashTableEntry;
-    /*union {
-        ULONG CheckSum;
-        PVOID Reserved6;
-    };*/
-    ULONG TimeDateStamp;
-} LDR_MODULE, * PLDR_MODULE;
-
-typedef struct PEB64
-{
     union
     {
+        UCHAR FlagGroup[4];
+        ULONG Flags;
         struct
         {
-            BYTE InheritedAddressSpace;                                 //0x000
-            BYTE ReadImageFileExecOptions;                              //0x001
-            BYTE BeingDebugged;                                         //0x002
-            BYTE _SYSTEM_DEPENDENT_01;                                  //0x003
-        } flags;
-        BYTE dummyalign[8];
-    } dword0;
-    PVOID                           Mutant;                             //0x0008
-    PVOID                           ImageBaseAddress;                   //0x0010
-    PPEB_LDR_DATA                   Ldr;                                //0x0018
-    PVOID                           ProcessParameters;                  //0x0020 / pointer to RTL_USER_PROCESS_PARAMETERS64
-    PVOID                           SubSystemData;                      //0x0028
-    PVOID                           ProcessHeap;                        //0x0030
-    PVOID                           FastPebLock;                        //0x0038
-    PVOID                           _SYSTEM_DEPENDENT_02;               //0x0040
-    PVOID                           _SYSTEM_DEPENDENT_03;               //0x0048
-    PVOID                           _SYSTEM_DEPENDENT_04;               //0x0050
-    union
-    {
-        PVOID                       KernelCallbackTable;                //0x0058
-        PVOID                       UserSharedInfoPtr;                  //0x0058
+            ULONG PackagedBinary : 1;
+            ULONG MarkedForRemoval : 1;
+            ULONG ImageDll : 1;
+            ULONG LoadNotificationsSent : 1;
+            ULONG TelemetryEntryProcessed : 1;
+            ULONG ProcessStaticImport : 1;
+            ULONG InLegacyLists : 1;
+            ULONG InIndexes : 1;
+            ULONG ShimDll : 1;
+            ULONG InExceptionTable : 1;
+            ULONG ReservedFlags1 : 2;
+            ULONG LoadInProgress : 1;
+            ULONG LoadConfigProcessed : 1;
+            ULONG EntryProcessed : 1;
+            ULONG ProtectDelayLoad : 1;
+            ULONG ReservedFlags3 : 2;
+            ULONG DontCallForThreads : 1;
+            ULONG ProcessAttachCalled : 1;
+            ULONG ProcessAttachFailed : 1;
+            ULONG CorDeferredValidate : 1;
+            ULONG CorImage : 1;
+            ULONG DontRelocate : 1;
+            ULONG CorILOnly : 1;
+            ULONG ReservedFlags5 : 3;
+            ULONG Redirected : 1;
+            ULONG ReservedFlags6 : 2;
+            ULONG CompatDatabaseProcessed : 1;
+        };
     };
-    DWORD                           SystemReserved;                     //0x0060
-    DWORD                           _SYSTEM_DEPENDENT_05;               //0x0064
-    PVOID                           _SYSTEM_DEPENDENT_06;               //0x0068
-    PVOID                           TlsExpansionCounter;                //0x0070
-    PVOID                           TlsBitmap;                          //0x0078
-    DWORD                           TlsBitmapBits[2];                   //0x0080
-    PVOID                           ReadOnlySharedMemoryBase;           //0x0088
-    PVOID                           _SYSTEM_DEPENDENT_07;               //0x0090
-    PVOID                           ReadOnlyStaticServerData;           //0x0098
-    PVOID                           AnsiCodePageData;                   //0x00A0
-    PVOID                           OemCodePageData;                    //0x00A8
-    PVOID                           UnicodeCaseTableData;               //0x00B0
-    DWORD                           NumberOfProcessors;                 //0x00B8
-    union
-    {
-        DWORD                       NtGlobalFlag;                       //0x00BC
-        DWORD                       dummy02;                            //0x00BC
-    };
-    LARGE_INTEGER                   CriticalSectionTimeout;             //0x00C0
-    PVOID                           HeapSegmentReserve;                 //0x00C8
-    PVOID                           HeapSegmentCommit;                  //0x00D0
-    PVOID                           HeapDeCommitTotalFreeThreshold;     //0x00D8
-    PVOID                           HeapDeCommitFreeBlockThreshold;     //0x00E0
-    DWORD                           NumberOfHeaps;                      //0x00E8
-    DWORD                           MaximumNumberOfHeaps;               //0x00EC
-    PVOID                           ProcessHeaps;                       //0x00F0
-    PVOID                           GdiSharedHandleTable;               //0x00F8
-    PVOID                           ProcessStarterHelper;               //0x0100
-    PVOID                           GdiDCAttributeList;                 //0x0108
-    PVOID                           LoaderLock;                         //0x0110
-    DWORD                           OSMajorVersion;                     //0x0118
-    DWORD                           OSMinorVersion;                     //0x011C
-    WORD                            OSBuildNumber;                      //0x0120
-    WORD                            OSCSDVersion;                       //0x0122
-    DWORD                           OSPlatformId;                       //0x0124
-    DWORD                           ImageSubsystem;                     //0x0128
-    DWORD                           ImageSubsystemMajorVersion;         //0x012C
-    PVOID                           ImageSubsystemMinorVersion;         //0x0130
-    union
-    {
-        PVOID                       ImageProcessAffinityMask;           //0x0138
-        PVOID                       ActiveProcessAffinityMask;          //0x0138
-    };
-    PVOID                           GdiHandleBuffer[30];                //0x0140
-    PVOID                           PostProcessInitRoutine;             //0x0230
-    PVOID                           TlsExpansionBitmap;                 //0x0238
-    DWORD                           TlsExpansionBitmapBits[32];         //0x0240
-    PVOID                           SessionId;                          //0x02C0
-    ULARGE_INTEGER                  AppCompatFlags;                     //0x02C8
-    ULARGE_INTEGER                  AppCompatFlagsUser;                 //0x02D0
-    PVOID                           pShimData;                          //0x02D8
-    PVOID                           AppCompatInfo;                      //0x02E0
-    UNICODE_STRING64                CSDVersion;                         //0x02E8
-    PVOID                           ActivationContextData;              //0x02F8
-    PVOID                           ProcessAssemblyStorageMap;          //0x0300
-    PVOID                           SystemDefaultActivationContextData; //0x0308
-    PVOID                           SystemAssemblyStorageMap;           //0x0310
-    PVOID                           MinimumStackCommit;                 //0x0318
-
-} PEB, * PPEB;
+    USHORT ObsoleteLoadCount;
+    USHORT TlsIndex;
+    LIST_ENTRY HashLinks;
+    ULONG TimeDateStamp;
+    struct _ACTIVATION_CONTEXT* EntryPointActivationContext;
+    PVOID Lock;
+    PLDR_DDAG_NODE DdagNode;
+    LIST_ENTRY NodeModuleLink;
+    struct _LDRP_LOAD_CONTEXT* LoadContext;
+    PVOID ParentDllBase;
+    PVOID SwitchBackContext;
+    RTL_BALANCED_NODE BaseAddressIndexNode;
+    RTL_BALANCED_NODE MappingInfoIndexNode;
+    ULONG_PTR OriginalBase;
+    LARGE_INTEGER LoadTime;
+    ULONG BaseNameHashValue;
+    LDR_DLL_LOAD_REASON LoadReason;
+    ULONG ImplicitPathOptions;
+    ULONG ReferenceCount;
+} LDR_DATA_TABLE_ENTRY, * PLDR_DATA_TABLE_ENTRY;
 
 typedef struct _PROCESS_BASIC_INFORMATION
 {
@@ -192,6 +634,15 @@ typedef struct _PROCESS_BASIC_INFORMATION
     ULONG_PTR InheritedFromUniqueProcessId;
 } PROCESS_BASIC_INFORMATION, * PPROCESS_BASIC_INFORMATION;
 
+typedef struct _THREAD_BASIC_INFORMATION
+{
+    NTSTATUS ExitStatus;
+    PTEB TebBaseAddress;
+    CLIENT_ID ClientId;
+    ULONG_PTR AffinityMask;
+    KPRIORITY Priority;
+    LONG BasePriority;
+} THREAD_BASIC_INFORMATION, * PTHREAD_BASIC_INFORMATION;
 
 __kernel_entry NTSTATUS NtQueryInformationProcess(
     _In_            HANDLE           ProcessHandle,
@@ -199,4 +650,12 @@ __kernel_entry NTSTATUS NtQueryInformationProcess(
     _Out_           PVOID            ProcessInformation,
     _In_            ULONG            ProcessInformationLength,
     _Out_opt_       PULONG           ReturnLength
+);
+
+__kernel_entry NTSTATUS NtQueryInformationThread(
+    _In_            HANDLE          ThreadHandle,
+    _In_            THREADINFOCLASS ThreadInformationClass,
+    _Out_           PVOID           ThreadInformation,
+    _In_            ULONG           ThreadInformationLength,
+    _Out_opt_       PULONG          ReturnLength
 );

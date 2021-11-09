@@ -23,9 +23,6 @@
     <None Include=".editorconfig" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="tebpeb64.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="dllhelper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
