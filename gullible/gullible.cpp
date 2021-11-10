@@ -33,13 +33,6 @@ void test_loadlib(const char* name)
     }
 }
 
-void thread_print()
-{
-    printf("Hello from %d\n", GetCurrentThreadId());
-    Sleep(10000);
-    printf("Bye from %d\n", GetCurrentThreadId());
-}
-
 int main()
 {
     test_loadlib("suspect.dll");
@@ -47,15 +40,6 @@ int main()
     while (true)
     {
         printf("main is still here!\n");
-        //hThread = CreateThread(
-        //    NULL,    // Thread attributes
-        //    0,       // Stack size (0 = use default)
-        //    (LPTHREAD_START_ROUTINE) thread_print, // Thread start address
-        //    NULL,    // Parameter to pass to the thread
-        //    0,       // Creation flags
-        //    NULL);   // Thread id
-        //if (hThread == NULL)
-        //    cout << "FAIL" << GetLastErrorAsString() << endl;
         Sleep(2000);
     }
     return 0;

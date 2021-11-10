@@ -644,7 +644,7 @@ typedef struct _THREAD_BASIC_INFORMATION
     LONG BasePriority;
 } THREAD_BASIC_INFORMATION, * PTHREAD_BASIC_INFORMATION;
 
-__kernel_entry NTSTATUS NtQueryInformationProcess(
+__kernel_entry NTSTATUS __stdcall NtQueryInformationProcess(
     _In_            HANDLE           ProcessHandle,
     _In_            PROCESSINFOCLASS ProcessInformationClass,
     _Out_           PVOID            ProcessInformation,
@@ -652,7 +652,7 @@ __kernel_entry NTSTATUS NtQueryInformationProcess(
     _Out_opt_       PULONG           ReturnLength
 );
 
-__kernel_entry NTSTATUS NtQueryInformationThread(
+__kernel_entry NTSTATUS __stdcall NtQueryInformationThread(
     _In_            HANDLE          ThreadHandle,
     _In_            THREADINFOCLASS ThreadInformationClass,
     _Out_           PVOID           ThreadInformation,
